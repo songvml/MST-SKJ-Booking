@@ -2,7 +2,7 @@
 sequenceDiagram
     actor Member
     participant SKJ Booking form
-    participant SKJ Booking Service
+    participant LINE Platform
     participant Member Service
     participant Consent Service
     participant PII Data Service
@@ -10,13 +10,35 @@ sequenceDiagram
     participant SKJ Booking CMS
     participant SKJ Journey System
 
+    %% --- Member Login via LINE ---
+    Member->>+SKJ Booking form: Clicks "Login with LINE"
+    SKJ Booking form-->>Member: Redirects to LINE Login consent screen
+    
+    Member->>+LINE Platform: Enters credentials & approves permissions
+    LINE Platform-->>Member: Redirects back to SKJ Booking form with authorization code
+    
+    Member->>+SKJ Booking form: Accesses redirect URI with auth code
+    SKJ Booking form->>+Member Service: POST /api/login/line (authCode)
+    
+    activate Member Service
+    Member Service->>+LINE Platform: Exchange auth code for tokens
+    LINE Platform-->>-Member Service: Returns access_token, id_token
+    
+    Note right of Member Service: Validates ID token, finds or creates member, generates session JWT.
+    
+    Member Service-->>-SKJ Booking form: Returns session JWT
+    deactivate Member Service
+    SKJ Booking form-->>-Member: Displays "Login Successful"
+    
+    %% --- Booking Submission by Logged-in Member ---
     Member->>+SKJ Booking form: Fills form, provides PII details, attaches receipt
-    SKJ Booking form->>+SKJ Booking Service: POST /api/bookings (bookingDetails, receiptFile)
+    SKJ Booking form->>+SKJ Booking Service: POST /api/bookings (bookingDetails, receiptFile, session JWT)
+    deactivate SKJ Booking form
     
     activate SKJ Booking Service
     
     %% --- Validation and Secure Data Handling ---
-    SKJ Booking Service->>+Member Service: validateToken(authToken)
+    SKJ Booking Service->>+Member Service: validateToken(session JWT)
     Member Service-->>-SKJ Booking Service: Returns 200 OK (Member authorized)
     
     SKJ Booking Service->>+Consent Service: recordConsent(memberId, 'booking_pii')
@@ -26,9 +48,6 @@ sequenceDiagram
     PII Data Service-->>-SKJ Booking Service: Returns secureReferenceIds
     
     Note right of SKJ Booking Service: Creates booking internally with status 'Awaiting Approval', linking PII references.
-    SKJ Booking Service-->>-SKJ Booking form: Returns 201 Created (bookingId)
-    deactivate SKJ Booking form
-    
     deactivate SKJ Booking Service
 
     %% --- Dealer Approval Sub-flow ---
@@ -60,5 +79,6 @@ sequenceDiagram
     SKJ Booking Service-->>-SKJ Booking CMS: Returns 200 OK
     deactivate SKJ Booking Service
     SKJ Booking CMS-->>-Dealer: Displays "Booking Approved & Transferred"
+
 ```
 
