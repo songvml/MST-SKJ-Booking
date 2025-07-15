@@ -8,10 +8,10 @@ sequenceDiagram
 
     User->>+Register Form: Submits Registration Form
     Register Form->>+Member Service: POST /api/register (userDetails)
-    Member Service->>+Identity Provider: createUser(credentials)
+    Member Service->>+CIAM: createUser(credentials)
     CIAM-->>-Member Service: Returns unique userId
     Member Service->>+Member Database: createProfile(userId, profileData)
     Member Database-->>-Member Service: Returns success
-    Member Service-->>-Frontend Application: 201 Created
-    Frontend Application-->>-User: Displays "Registration Successful"
+    Member Service-->>-Register Form: 201 Created
+    Register Form-->>-User: Displays "Registration Successful"
 ```
