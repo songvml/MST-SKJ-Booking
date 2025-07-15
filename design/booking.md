@@ -49,17 +49,16 @@ sequenceDiagram
     activate SKJ Booking Service
     Note right of SKJ Booking Service: Updates booking status to 'Approved' internally.
     
-    %% --- Handoff to Journey System ---
-    Note over SKJ Booking Service, SKJ Journey System: Handoff via Event Publication or API Call
-    SKJ Booking Service->>+SKJ Journey System: Publishes BookingApproved Event (bookingDetails, pii_references)
+    %% --- Handoff to Journey System via API---
+    Note over SKJ Booking Service, SKJ Journey System: Handoff via Synchronous API Call
+    SKJ Booking Service->>+SKJ Journey System: POST /api/journeys (bookingDetails, pii_references)
     activate SKJ Journey System
-    SKJ Journey System-->>-SKJ Booking Service: Acknowledges Event (202_Accepted)
+    Note right of SKJ Journey System: Creates new journey record internally.
+    SKJ Journey System-->>-SKJ Booking Service: Returns 201 Created (journeyId)
     deactivate SKJ Journey System
     
     SKJ Booking Service-->>-SKJ Booking CMS: Returns 200 OK
     deactivate SKJ Booking Service
-    SKJ Booking CMS-->>-Dealer: Displays "Booking Approved & Transferred"
-
     SKJ Booking CMS-->>-Dealer: Displays "Booking Approved & Transferred"
 ```
 
