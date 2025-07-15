@@ -13,23 +13,18 @@ sequenceDiagram
     %% --- Member Login via LINE ---
     Member->>+SKJ Booking form: Clicks "Login with LINE"
     SKJ Booking form-->>Member: Redirects to LINE Login consent screen
-    
     Member->>+LINE Platform: Enters credentials & approves permissions
     LINE Platform-->>Member: Redirects back to SKJ Booking form with authorization code
-    
     Member->>+SKJ Booking form: Accesses redirect URI with auth code
     SKJ Booking form->>+Member Service: POST /api/login/line (authCode)
-    
     activate Member Service
     Member Service->>+LINE Platform: Exchange auth code for tokens
     LINE Platform-->>-Member Service: Returns access_token, id_token
-    
     Note right of Member Service: Validates ID token, finds or creates member, generates session JWT.
-    
     Member Service-->>-SKJ Booking form: Returns session JWT
     deactivate Member Service
     SKJ Booking form-->>-Member: Displays "Login Successful"
-    
+
     %% --- Booking Submission by Logged-in Member ---
     Member->>+SKJ Booking form: Fills form, provides PII details, attaches receipt
     SKJ Booking form->>+SKJ Booking Service: POST /api/bookings (bookingDetails, receiptFile, session JWT)
@@ -44,8 +39,12 @@ sequenceDiagram
     SKJ Booking Service->>+Consent Service: recordConsent(memberId, 'booking_pii')
     Consent Service-->>-SKJ Booking Service: Returns Success
     
-    SKJ Booking Service->>+PII Data Service: storeData(contactDetails, receiptFile)
+    Note over SKJ Booking Service, PII Data Service: Accessing PII Service with Member's Token
+    SKJ Booking Service->>+PII Data Service: storeData(contactDetails, receiptFile, session JWT)
+    activate PII Data Service
+    Note left of PII Data Service: Validates member's JWT before storing.
     PII Data Service-->>-SKJ Booking Service: Returns secureReferenceIds
+    deactivate PII Data Service
     
     Note right of SKJ Booking Service: Creates booking internally with status 'Awaiting Approval', linking PII references.
     deactivate SKJ Booking Service
@@ -55,9 +54,13 @@ sequenceDiagram
     SKJ Booking CMS->>+SKJ Booking Service: GET /api/bookings?status=AwaitingApproval
     
     activate SKJ Booking Service
-    Note right of SKJ Booking Service: Fetches booking data internally and resolves PII for display.
-    SKJ Booking Service->>+PII Data Service: getDataForDisplay(pii_references)
+    Note over SKJ Booking Service, PII Data Service: Service-to-Service auth for privileged access
+    SKJ Booking Service->>+PII Data Service: getDataForDisplay(pii_references, serviceAuthToken)
+    activate PII Data Service
+    Note left of PII Data Service: Authorizes trusted service call for dealer review.
     PII Data Service-->>-SKJ Booking Service: Returns viewable PII data
+    deactivate PII Data Service
+    
     SKJ Booking Service-->>-SKJ Booking CMS: Responds with pending booking details
     deactivate SKJ Booking Service
     
@@ -79,6 +82,5 @@ sequenceDiagram
     SKJ Booking Service-->>-SKJ Booking CMS: Returns 200 OK
     deactivate SKJ Booking Service
     SKJ Booking CMS-->>-Dealer: Displays "Booking Approved & Transferred"
-
 ```
 
